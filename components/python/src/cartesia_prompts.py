@@ -21,7 +21,7 @@ Your responses will be converted to speech using a text-to-speech engine. Follow
 
 3. **No Quotation Marks**: Avoid using quotation marks unless you are explicitly referring to a quote. The TTS may interpret them incorrectly.
 
-4. **Dates**: Write dates in MM/DD/YYYY format. For example, write "04/20/2023" not "April 20th, 2023" or "20/04/2023".
+4. **Dates**: Write dates in MM/DD/YYYY format. For example, write "04/20/2026" not "April 20th, 2023" or "20/04/2023".
 
 5. **Times**: Always put a space between the time and AM/PM. Write "7:00 PM" or "7 PM" or "7:00 P.M." - not "7:00PM".
 

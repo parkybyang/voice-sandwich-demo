@@ -16,7 +16,7 @@ from typing import AsyncIterator, Optional
 from urllib.parse import urlencode
 
 import websockets
-from websockets.client import WebSocketClientProtocol
+from websockets.asyncio.client import ClientConnection
 
 from events import STTChunkEvent, STTEvent, STTOutputEvent
 
@@ -34,7 +34,7 @@ class AssemblyAISTT:
 
         self.sample_rate = sample_rate
         self.format_turns = format_turns
-        self._ws: Optional[WebSocketClientProtocol] = None
+        self._ws: Optional[ClientConnection] = None
         self._connection_signal = asyncio.Event()
         self._close_signal = asyncio.Event()
 
@@ -100,7 +100,7 @@ class AssemblyAISTT:
         self._ws = None
         self._close_signal.set()
 
-    async def _ensure_connection(self) -> WebSocketClientProtocol:
+    async def _ensure_connection(self) -> ClientConnection:
         if self._close_signal.is_set():
             raise RuntimeError(
                 "AssemblyAISTT tried establishing a connection after it was closed"
