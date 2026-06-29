@@ -19,6 +19,11 @@ export function createVoiceSession(): VoiceSession {
   let ws: WebSocket | null = null;
   let ttsFinishTimeout: ReturnType<typeof setTimeout> | null = null;
 
+  // Barge-in state: when the user starts speaking while the agent is talking,
+  // we cut playback and drop the rest of the in-flight reply's audio.
+  let agentSpeaking = false;
+  let suppressTts = false;
+
   const audioCapture = createAudioCapture();
   const audioPlayback = createAudioPlayback();
 
@@ -27,6 +32,14 @@ export function createVoiceSession(): VoiceSession {
 
     switch (event.type) {
       case "stt_chunk":
+        // Barge-in: user spoke while the agent was talking -> cut it off now
+        // and discard any remaining audio from the interrupted reply.
+        if (event.transcript && agentSpeaking) {
+          audioPlayback.stop();
+          agentSpeaking = false;
+          suppressTts = true;
+          logs.log("⏹ Interrupted by user");
+        }
         if (!turn.active) {
           // New turn - save previous waterfall data and reset
           const prevTurn = get(currentTurn);
@@ -45,6 +58,9 @@ export function createVoiceSession(): VoiceSession {
         break;
 
       case "agent_chunk":
+        // A fresh agent response is starting -> stop suppressing TTS so the
+        // new reply's audio is allowed through.
+        suppressTts = false;
         currentTurn.agentChunk(event.ts, event.text);
         break;
 
@@ -64,6 +80,9 @@ export function createVoiceSession(): VoiceSession {
         break;
 
       case "tts_chunk": {
+        // Drop audio belonging to a reply the user already interrupted.
+        if (suppressTts) break;
+        agentSpeaking = true;
         const currentTurnState = get(currentTurn);
         if (!currentTurnState.ttsStartTs && currentTurnState.response) {
           activities.add("agent", "Agent Response", currentTurnState.response);
@@ -85,6 +104,7 @@ export function createVoiceSession(): VoiceSession {
   }
 
   function finishTurn() {
+    agentSpeaking = false;
     const turn = get(currentTurn);
     waterfallData.set({ ...turn });
     latencyStats.recordTurn(turn);
@@ -155,6 +175,8 @@ export function createVoiceSession(): VoiceSession {
       ttsFinishTimeout = null;
     }
 
+    agentSpeaking = false;
+    suppressTts = false;
     audioPlayback.stop();
     audioCapture.stop();
 
